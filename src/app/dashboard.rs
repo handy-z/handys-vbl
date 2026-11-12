@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI8, AtomicU32, Ordering::Relaxed};
 use std::time::{Duration, Instant};
 
+use handy_sdk::app::self_update::{UpdateStatus, badge_text};
 use handy_sdk::app::session_reader::SessionReader;
 use handy_sdk::app::updater_thread::{Updater, status_name_with, status_tone};
 use handy_sdk::input::focus::ForegroundWatcher;
@@ -58,6 +59,8 @@ pub struct DashboardDeps {
     pub config_ini: PathBuf,
     /// LowLevelHooks::start() installed every hook
     pub hooks_ok: bool,
+    /// what the startup self-update did; None when it did not run
+    pub update: Option<UpdateStatus>,
 }
 
 /// Shows the dashboard and the "ultimate: on/off" overlay until the window is closed. UI thread only, one at a time.
@@ -71,7 +74,7 @@ pub fn run_dashboard(deps: &DashboardDeps, show: SHOW_WINDOW_CMD) -> i32 {
     let first = Cell::new(true);
     let d = Dashboard::new(Spec {
         title: "handy's vbl".into(),
-        badge: concat!("v", env!("CARGO_PKG_VERSION")).into(),
+        badge: badge_text(env!("CARGO_PKG_VERSION"), deps.update),
         window_class: DASHBOARD_CLASS.into(),
         rows: vec![
             page("Play"),

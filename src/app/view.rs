@@ -142,6 +142,7 @@ pub fn snapshot_text(v: &DashboardView, s: &Settings) -> String {
     let mut line = |k: &str, val: &str| {
         o += &format!("{k}: {val}\n");
     };
+    line("version", env!("CARGO_PKG_VERSION"));
     line("status", &v.status);
     line("shiftlock", &v.shiftlock);
     line("footing", &v.footing);
@@ -278,7 +279,13 @@ mod tests {
         assert_eq!(none.footing, "Unknown");
         assert_eq!(none.ultimate, "unknown");
         let snap = snapshot_text(&v, &s);
-        assert!(snap.contains("status: Ready - v1\n"));
+        let head = format!(
+            "version: {}
+status: Ready - v1
+",
+            env!("CARGO_PKG_VERSION")
+        );
+        assert!(snap.starts_with(&head));
         assert!(snap.contains("shift delay: 20 ms\n"));
         assert!(snap.contains("counter reach: off\n"));
         s.counter_on = true;
