@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI8, AtomicU32, Ordering::Relaxed};
 use std::time::{Duration, Instant};
 
-use handy_sdk::app::self_update::{UpdateStatus, badge_text};
+use handy_sdk::app::self_update::SelfUpdate;
 use handy_sdk::app::session_reader::SessionReader;
 use handy_sdk::app::updater_thread::{Updater, status_name_with, status_tone};
 use handy_sdk::input::focus::ForegroundWatcher;
@@ -59,8 +59,7 @@ pub struct DashboardDeps {
     pub config_ini: PathBuf,
     /// LowLevelHooks::start() installed every hook
     pub hooks_ok: bool,
-    /// what the startup self-update did; None when it did not run
-    pub update: Option<UpdateStatus>,
+    pub update: Arc<SelfUpdate>,
 }
 
 /// Shows the dashboard and the "ultimate: on/off" overlay until the window is closed. UI thread only, one at a time.
@@ -74,7 +73,7 @@ pub fn run_dashboard(deps: &DashboardDeps, show: SHOW_WINDOW_CMD) -> i32 {
     let first = Cell::new(true);
     let d = Dashboard::new(Spec {
         title: "handy's vbl".into(),
-        badge: badge_text(env!("CARGO_PKG_VERSION"), deps.update),
+        badge: deps.update.badge().text,
         window_class: DASHBOARD_CLASS.into(),
         rows: vec![
             page("Play"),
@@ -109,6 +108,8 @@ pub fn run_dashboard(deps: &DashboardDeps, show: SHOW_WINDOW_CMD) -> i32 {
     foreground.start(); // nothing pumps messages before run(), so this matches starting it after the callbacks
     let fg = &foreground;
     d.on_tick(|ui| {
+        let b = deps.update.badge();
+        ui.set_badge(&b.text, b.tone, &b.tip);
         let mut st = deps.settings.get();
         if first.replace(false) {
             // first tick runs right after the window is created
@@ -160,6 +161,13 @@ pub fn run_dashboard(deps: &DashboardDeps, show: SHOW_WINDOW_CMD) -> i32 {
         ui.set_text(ID_KEY_WARN, &v.key_warning);
         ui.set_text(ID_HOTKEYS, &format!("{} resets your character", v.reset_key));
         overlay.set(if ult { "Ultimate on" } else { "Ultimate off" }, ult);
+    });
+    d.on_badge_click(|ui| {
+        if deps.update.request_restart() {
+            ui.close();
+        } else {
+            handy_sdk::ui::open_url(&deps.update.release_url());
+        }
     });
     d.on_check(|_, id, checked| {
         if id == ID_ULT_CHECK {

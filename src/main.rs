@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use handy_sdk::app::args::arg_value;
 use handy_sdk::app::crash_guard::on_crash;
-use handy_sdk::app::self_update::{UpdateStatus, update_on_startup};
+use handy_sdk::app::self_update::{SelfUpdate, Startup};
 use handy_sdk::app::session_reader::SessionReader;
 use handy_sdk::app::single_instance::SingleInstance;
 use handy_sdk::app::status_snapshot::{snapshot_allowed, wait_for};
@@ -109,11 +109,11 @@ fn run() -> i32 {
 
     // Only builds made by release.cmd update themselves (dev builds and build.cmd never do). Skipped while another
     // copy runs: its exe is in use and it would be replaced under it.
-    let update = (option_env!("HANDY_RELEASE").is_some() && !SingleInstance::is_running(MUTEX))
-        .then(|| update_on_startup("handy-z", "handys-vbl", env!("CARGO_PKG_VERSION")));
-    if update == Some(UpdateStatus::Restarting) {
-        return 0; // the new version is starting; exit before anything else runs
-    }
+    let enabled = option_env!("HANDY_RELEASE").is_some() && !SingleInstance::is_running(MUTEX);
+    let update = match SelfUpdate::start("handy-z", "handys-vbl", env!("CARGO_PKG_VERSION"), enabled) {
+        Startup::Restarting => return 0, // an update staged earlier is starting; exit before anything else runs
+        Startup::Running(u) => u,
+    };
 
     let mut instance = SingleInstance::new(MUTEX, DASHBOARD_CLASS);
     if !instance.acquire() {
@@ -239,7 +239,7 @@ fn run() -> i32 {
         settings: store.clone(),
         config_ini: ini.clone(),
         hooks_ok,
-        update,
+        update: update.clone(),
     };
     let rc = run_dashboard(&deps, SW_SHOWDEFAULT);
 
@@ -251,6 +251,7 @@ fn run() -> i32 {
     // The Updater join can wait out a WinHTTP timeout (up to 10 s): let a relaunch start meanwhile.
     instance.release();
     drop(updater_thread); // stops and joins
+    update.finish(); // after the mutex is released: starts the staged update
     rc
 }
 
