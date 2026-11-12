@@ -279,12 +279,7 @@ mod tests {
         assert_eq!(none.footing, "Unknown");
         assert_eq!(none.ultimate, "unknown");
         let snap = snapshot_text(&v, &s);
-        let head = format!(
-            "version: {}
-status: Ready - v1
-",
-            env!("CARGO_PKG_VERSION")
-        );
+        let head = format!("version: {}\nstatus: Ready - v1\n", env!("CARGO_PKG_VERSION"));
         assert!(snap.starts_with(&head));
         assert!(snap.contains("shift delay: 20 ms\n"));
         assert!(snap.contains("counter reach: off\n"));
