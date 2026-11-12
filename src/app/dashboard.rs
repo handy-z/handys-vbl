@@ -71,6 +71,7 @@ pub fn run_dashboard(deps: &DashboardDeps, show: SHOW_WINDOW_CMD) -> i32 {
     let first = Cell::new(true);
     let d = Dashboard::new(Spec {
         title: "handy's vbl".into(),
+        badge: concat!("v", env!("CARGO_PKG_VERSION")).into(),
         window_class: DASHBOARD_CLASS.into(),
         rows: vec![
             page("Play"),
