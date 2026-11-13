@@ -132,12 +132,14 @@ pub fn run_dashboard(deps: &DashboardDeps, show: SHOW_WINDOW_CMD) -> i32 {
         let detail = deps.updater.detail();
         let v = build_view(status, &detail, g.as_ref(), shiftlock_of(&deps.shiftlock), &st);
         if deps.hooks_ok {
+            ui.set_status_tip(&detail);
             ui.set_status(
                 status_tone(status),
                 status_name_with(status, "Calibrating cooldown"),
-                &detail,
+                "",
             );
         } else {
+            ui.set_status_tip("");
             ui.set_status(
                 Tone::Bad,
                 "Hotkeys unavailable",
@@ -154,7 +156,7 @@ pub fn run_dashboard(deps: &DashboardDeps, show: SHOW_WINDOW_CMD) -> i32 {
             ui.set_text(ID_FOOT, &v.footing);
         }
         ui.set_text(ID_ULT, &v.ultimate);
-        ui.set_text(ID_ULT_CHECK, &format!("Use ultimate\tpress {}", v.toggle_key));
+        ui.set_text(ID_ULT_CHECK, &format!("Use ultimate\tpress [{}]", v.toggle_key));
         ui.set_text(ID_JUMP, &v.jumpset_key);
         ui.set_text(ID_ULT_KEY, &v.ultimate_key);
         ui.set_text(ID_SPIKE, &v.spike_key);
